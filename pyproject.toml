@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mavirank-collector"
+version = "0.7.0"
+description = "Ships pseudonymised nginx/Apache logs to the mavirank log analysis"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: POSIX :: Linux",
+    "Environment :: No Input/Output (Daemon)",
+]
+
+[project.scripts]
+mavirank-collector = "mavirank_collector.cli:main"
+
+[tool.setuptools]
+packages = ["mavirank_collector"]

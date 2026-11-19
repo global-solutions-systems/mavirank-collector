@@ -1,0 +1,52 @@
+# Runs in the public repository of the collector (this directory is its root there).
+# A tag v<version> runs the tests, publishes the archive with its checksum as a release
+# and pushes the image to ghcr.io.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Tests
+        run: python3 -m unittest discover -s tests
+
+      - name: Version matches the tag
+        run: |
+          version="$(python3 -c 'import mavirank_collector; print(mavirank_collector.__version__)')"
+          test "v${version}" = "${GITHUB_REF_NAME}"
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+
+      - name: Archive and checksum
+        run: |
+          name="mavirank-collector-${VERSION}"
+          git archive --format=tar.gz --prefix="${name}/" -o "${name}.tar.gz" "${GITHUB_REF_NAME}"
+          sha256sum "${name}.tar.gz" > "${name}.tar.gz.sha256"
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" "mavirank-collector-${VERSION}.tar.gz" "mavirank-collector-${VERSION}.tar.gz.sha256" --title "${GITHUB_REF_NAME}" --generate-notes
+
+      - name: Log in to ghcr.io
+        run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Image
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY}"
+          docker build -t "${image}:${VERSION}" -t "${image}:latest" .
+          docker push "${image}:${VERSION}"
+          docker push "${image}:latest"

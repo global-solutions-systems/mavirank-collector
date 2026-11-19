@@ -1,0 +1,7 @@
+[Wed Nov 11 08:00:01.123456 2026] [core:error] [pid 2345:tid 140000] [client 192.0.2.37:51234] AH00126: Invalid URI in request GET /../../etc/passwd HTTP/1.1
+[Wed Nov 11 08:10:00.000001 2026] [php:error] [pid 2346:tid 140001] [client 2001:db8:1234::17:443] PHP Warning:  Undefined variable $x in /var/www/example/index.php on line 12, referer: https://www.example.com/blog/?email=jane%40example.org
+[Wed Nov 11 08:20:00 2026] [ssl:warn] [pid 2300] AH01909: www.example.com:443:0 server certificate does NOT include an ID which matches the server name
+[Wed Nov 11 08:30:00.5 2026] [proxy_fcgi:error] [pid 2347:tid 140002] [client 203.0.113.5:40000] AH01071: Got error 'Primary script unknown'
+[Wed Nov 11 08:40:00.1 2026] [authz_core:error] [pid 2348:tid 140003] [client 198.51.100.66:12345] AH01630: client denied by server configuration: /var/www/example/.env
+[Wed Nov 11 08:50:00.1 2026] [mpm_event:notice] [pid 1:tid 1] AH00489: Apache/2.4.62 (Debian) configured -- resuming normal operations
+[Wed Nov 11 09:00:00.1 2026] [core:trace3] [pid 2349:tid 140004] [client 192.0.2.10:5555] request.c(311): trace message

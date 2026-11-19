@@ -1,0 +1,7 @@
+tests
+examples
+*.sh
+**/__pycache__
+**/*.pyc
+build
+*.egg-info
