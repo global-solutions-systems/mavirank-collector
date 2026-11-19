@@ -3,7 +3,7 @@
 # Python 3.9+ and cron). No root needed; nothing is downloaded; no pip, no venv, no sudo.
 # Run it as a user who can read the website's log files, not as root.
 #
-#   ./install.sh [--name <name>] [--python /usr/bin/python3] [--cron]
+#   ./install.sh [--name <name>] [--home <dir>] [--python /usr/bin/python3] [--cron]
 #
 # Creates:  ~/.local/share/mavirank-collector/            the package (shared by all instances)
 #           ~/.local/bin/mavirank-collector               command (shared)
@@ -11,6 +11,8 @@
 #           ~/.local/state/mavirank-collector             state (0700)
 #   --name  another website in the same account (lowercase letters, digits, "-"): uses
 #           ~/.config/mavirank-collector/<name>.conf and ~/.local/state/mavirank-collector/<name>
+#   --home  base directory instead of the home directory, for hostings whose home directory is
+#           not writable (e.g. ISPConfig: --home ~/private); pass the same value to uninstall.sh
 #   --cron  adds a crontab entry that runs this instance every 5 minutes (idempotent);
 #           without it the entry is only printed.
 #
@@ -21,6 +23,7 @@ umask 077
 PYTHON=
 CRON=0
 NAME=
+BASE=
 
 die() { echo "install.sh: $*" >&2; exit 1; }
 
@@ -29,7 +32,8 @@ while [ $# -gt 0 ]; do
         --python) [ $# -ge 2 ] || die "--python needs a path"; PYTHON=$2; shift 2 ;;
         --cron) CRON=1; shift ;;
         --name) [ $# -ge 2 ] || die "--name needs a value"; NAME=$2; shift 2 ;;
-        -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
+        --home) [ $# -ge 2 ] || die "--home needs a directory"; BASE=$2; shift 2 ;;
+        -h|--help) sed -n '2,19p' "$0"; exit 0 ;;
         *) echo "unknown option: $1" >&2; exit 2 ;;
     esac
 done
@@ -47,16 +51,36 @@ if [ "$UID_NOW" -eq 0 ]; then
     echo "$ROOT_NOTE" >&2
     echo >&2
 fi
-[ -n "${HOME:-}" ] && [ -d "$HOME" ] || die "HOME is not set or does not exist"
+# Everything lives below one base directory: the home directory, or --home <dir> where the home
+# directory is not writable (hosting panels often protect it and offer a private subdirectory).
+if [ -z "$BASE" ]; then
+    [ -n "${HOME:-}" ] && [ -d "$HOME" ] || die "HOME is not set or does not exist (or use --home <dir>)"
+    BASE=$HOME
+fi
+[ -d "$BASE" ] || die "--home: $BASE is not a directory"
+BASE=$(cd "$BASE" && pwd) || die "--home: cannot enter $BASE"
+if [ ! -w "$BASE" ]; then
+    HINT=
+    for CANDIDATE in "$BASE/private" "$BASE/.private"; do
+        if [ -d "$CANDIDATE" ] && [ -w "$CANDIDATE" ]; then
+            HINT="
+Your hosting protects it, but this directory is writable and not served by the web server:
+  ./install.sh --home '$CANDIDATE'"
+            break
+        fi
+    done
+    die "$BASE is not writable for $(id -un).$HINT
+Choose a directory outside the document root with --home <dir>."
+fi
 
 SRC_DIR=$(cd "$(dirname "$0")" && pwd)
 [ -f "$SRC_DIR/mavirank_collector/cli.py" ] || die "package not found next to this script ($SRC_DIR)"
 
-SHARE_DIR=$HOME/.local/share/mavirank-collector
-BIN_DIR=$HOME/.local/bin
+SHARE_DIR=$BASE/.local/share/mavirank-collector
+BIN_DIR=$BASE/.local/bin
 BIN=$BIN_DIR/mavirank-collector
-CONF_DIR=$HOME/.config/mavirank-collector
-STATE_BASE=$HOME/.local/state/mavirank-collector
+CONF_DIR=$BASE/.config/mavirank-collector
+STATE_BASE=$BASE/.local/state/mavirank-collector
 if [ -n "$NAME" ]; then
     CONF_FILE=$CONF_DIR/$NAME.conf
     STATE_DIR=$STATE_BASE/$NAME
@@ -89,8 +113,8 @@ else
 fi
 case "$FOUND" in /*) ;; *) FOUND=$(cd "$(dirname "$FOUND")" && pwd)/$(basename "$FOUND") ;; esac
 PYTHON=$FOUND
-case "$HOME$PYTHON" in
-    *"'"*|*"%"*) die "paths containing ' or % are not supported: $HOME, $PYTHON" ;;
+case "$BASE$PYTHON" in
+    *"'"*|*"%"*) die "paths containing ' or % are not supported: $BASE, $PYTHON" ;;
 esac
 echo "==> Python $PYTHON ($("$PYTHON" -V 2>&1))"
 

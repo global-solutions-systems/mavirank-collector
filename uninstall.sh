@@ -4,6 +4,7 @@
 #   ./uninstall.sh                  remove the crontab entry; remove the shared command and
 #                                        package unless other instances (--name) still use them
 #   ./uninstall.sh --name <name>    remove only the crontab entry of this instance
+#   --home <dir>                         the base directory given to install.sh --home
 #   --purge                              also delete the configuration and state (offsets, day
 #                                        keys) of the instance
 set -eu
@@ -11,6 +12,7 @@ umask 077
 
 PURGE=0
 NAME=
+BASE=
 ANY_MARKER="# mavirank-collector[: ].*(install\.sh)"
 
 die() { echo "uninstall.sh: $*" >&2; exit 1; }
@@ -19,7 +21,8 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --purge) PURGE=1; shift ;;
         --name) [ $# -ge 2 ] || die "--name needs a value"; NAME=$2; shift 2 ;;
-        -h|--help) sed -n '2,8p' "$0"; exit 0 ;;
+        --home) [ $# -ge 2 ] || die "--home needs a directory"; BASE=$2; shift 2 ;;
+        -h|--help) sed -n '2,9p' "$0"; exit 0 ;;
         *) echo "unknown option: $1" >&2; exit 2 ;;
     esac
 done
@@ -29,12 +32,19 @@ case "$NAME" in
     collector|keys) die "--name: \"$NAME\" is reserved" ;;
 esac
 
-[ -n "${HOME:-}" ] && [ -d "$HOME" ] || die "HOME is not set or does not exist"
+# Everything lives below one base directory: the home directory, or --home <dir> where the home
+# directory is not writable (hosting panels often protect it and offer a private subdirectory).
+if [ -z "$BASE" ]; then
+    [ -n "${HOME:-}" ] && [ -d "$HOME" ] || die "HOME is not set or does not exist (or use --home <dir>)"
+    BASE=$HOME
+fi
+[ -d "$BASE" ] || die "--home: $BASE is not a directory"
+BASE=$(cd "$BASE" && pwd) || die "--home: cannot enter $BASE"
 
-SHARE_DIR=$HOME/.local/share/mavirank-collector
-BIN=$HOME/.local/bin/mavirank-collector
-CONF_DIR=$HOME/.config/mavirank-collector
-STATE_BASE=$HOME/.local/state/mavirank-collector
+SHARE_DIR=$BASE/.local/share/mavirank-collector
+BIN=$BASE/.local/bin/mavirank-collector
+CONF_DIR=$BASE/.config/mavirank-collector
+STATE_BASE=$BASE/.local/state/mavirank-collector
 if [ -n "$NAME" ]; then
     CONF_FILE=$CONF_DIR/$NAME.conf
     STATE_DIR=$STATE_BASE/$NAME

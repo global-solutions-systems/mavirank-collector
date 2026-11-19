@@ -38,8 +38,8 @@ compare its SHA-256 checksum with the one published next to it, then as the user
 the logs:
 
 ```sh
-tar -xzf mavirank-collector-0.7.0.tar.gz
-cd mavirank-collector-0.7.0
+tar -xzf mavirank-collector-0.7.1.tar.gz
+cd mavirank-collector-0.7.1
 ./install.sh                          # --python /path/to/python3.X if python3 is older than 3.9
 editor ~/.config/mavirank-collector/collector.conf   # ingest_url, token, log paths, domain
 ~/.local/bin/mavirank-collector check
@@ -97,6 +97,20 @@ and groups the collector runs as, so you can ask your hosting provider for read 
 Limits: hostings without SSH, without Python 3.9+ or without cron cannot run the collector.
 Neither can it read logs that the hosting provider does not make readable for your account.
 
+### Hosting panels with a protected home directory
+
+Some panels (e.g. ISPConfig) make the home directory of the website's user read-only and offer a
+private subdirectory instead. The installer notices this and names the option to use:
+
+```sh
+./install.sh --home ~/private            # everything below ~/private/.local and ~/private/.config
+~/private/.local/bin/mavirank-collector check
+./uninstall.sh --home ~/private          # the same value when removing
+```
+
+Unpack the archive and install **outside the document root** (not in `web/`, `htdocs/` or
+`public_html/`): files there can be downloaded by anyone, and the configuration holds your token.
+
 ## Docker
 
 For servers whose web server runs in a container: the collector runs as a second container and
@@ -110,7 +124,7 @@ services:
       - nginx-logs:/var/log/nginx
       - ./site.conf:/etc/nginx/conf.d/default.conf:ro
   mavirank-collector:
-    image: ghcr.io/global-solutions-systems/mavirank-collector:0.7.0
+    image: ghcr.io/global-solutions-systems/mavirank-collector:0.7.1
     restart: unless-stopped
     environment:
       MAVIRANK_COLLECTOR_TOKEN: ${MAVIRANK_COLLECTOR_TOKEN}
@@ -155,7 +169,7 @@ names the uid when the configuration cannot be read. In the image, the configura
 `/etc/mavirank-collector/collector.conf` and the state directory `/var/lib/mavirank-collector`.
 
 The container runs as a non-root user and repeats `run` every 300 s. For an external scheduler use
-`docker run --rm … ghcr.io/global-solutions-systems/mavirank-collector:0.7.0 run`. Commands:
+`docker run --rm … ghcr.io/global-solutions-systems/mavirank-collector:0.7.1 run`. Commands:
 `docker compose run --rm mavirank-collector check` and `… run --dry-run`.
 
 ## Configuration
